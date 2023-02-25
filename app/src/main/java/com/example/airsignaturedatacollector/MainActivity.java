@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Vibrator vibrator;
 
     private Button startButton; // New variable to hold the start button
-    private int fileCounter = 1; // New variable to keep track of the file count
+    private int fileCounter = 0; // New variable to keep track of the file count
 
 
     @Override
@@ -107,6 +107,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (isCollectingData) {
             return;
         }
+        isCollectingData = true;
         fileCounter++; // Increment the file count
         saveDataToFileHeader(); // Save a new file header
         Toast.makeText(getBaseContext(), "Data collection started. File #" + fileCounter + " created.", Toast.LENGTH_LONG).show();
@@ -157,36 +158,38 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        currentX.setText(String.format("%.2f", event.values[0]));
-        currentY.setText(String.format("%.2f", event.values[1]));
-        currentZ.setText(String.format("%.2f", event.values[2]));
+        if (isCollectingData) {
+            currentX.setText(String.format("%.2f", event.values[0]));
+            currentY.setText(String.format("%.2f", event.values[1]));
+            currentZ.setText(String.format("%.2f", event.values[2]));
 
-        float deltaX = Math.abs(lastX - event.values[0]);
-        float deltaY = Math.abs(lastY - event.values[1]);
-        float deltaZ = Math.abs(lastZ - event.values[2]);
+            float deltaX = Math.abs(lastX - event.values[0]);
+            float deltaY = Math.abs(lastY - event.values[1]);
+            float deltaZ = Math.abs(lastZ - event.values[2]);
 
-        if (deltaX > deltaXMax) {
-            deltaXMax = deltaX;
-            maxX.setText(String.format("%.2f", deltaXMax));
+            if (deltaX > deltaXMax) {
+                deltaXMax = deltaX;
+                maxX.setText(String.format("%.2f", deltaXMax));
+            }
+            if (deltaY > deltaYMax) {
+                deltaYMax = deltaY;
+                maxY.setText(String.format("%.2f", deltaYMax));
+            }
+            if (deltaZ > deltaZMax) {
+                deltaZMax = deltaZ;
+                maxZ.setText(String.format("%.2f", deltaZMax));
+            }
+
+            lastX = event.values[0];
+            lastY = event.values[1];
+            lastZ = event.values[2];
+
+            if (deltaX > vibrateThreshold || deltaY > vibrateThreshold || deltaZ > vibrateThreshold) {
+                vibrator.vibrate(VIBRATION_DURATION);
+            }
+
+            saveDataToFile(event); // Save the data to the file
         }
-        if (deltaY > deltaYMax) {
-            deltaYMax = deltaY;
-            maxY.setText(String.format("%.2f", deltaYMax));
-        }
-        if (deltaZ > deltaZMax) {
-            deltaZMax = deltaZ;
-            maxZ.setText(String.format("%.2f", deltaZMax));
-        }
-
-        lastX = event.values[0];
-        lastY = event.values[1];
-        lastZ = event.values[2];
-
-        if (deltaX > vibrateThreshold || deltaY > vibrateThreshold || deltaZ > vibrateThreshold) {
-            vibrator.vibrate(VIBRATION_DURATION);
-        }
-
-        saveDataToFile(event); // Save the data to the file
     }
 
     @Override
@@ -198,7 +201,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         String currentDateandTime = sdf.format(new Date());
         String fileName = "data_" + fileCounter + "_" + currentDateandTime + ".csv";
 
-        File file = new File(Environment.getExternalStorageDirectory(), fileName);
+       // File file = new File(Environment.getExternalStorageDirectory(), fileName);
+        File file = new File(getFilesDir(), fileName);
         FileWriter writer;
         try {
             writer = new FileWriter(file);
@@ -215,7 +219,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         String currentDateandTime = sdf.format(new Date());
         String fileName = "data_" + fileCounter + "_" + currentDateandTime.substring(0, 10) + ".csv";
 
-        File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), fileName);
+       // File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), fileName);
+        File file = new File(getFilesDir(), fileName);
         FileWriter writer;
         try {
             writer = new FileWriter(file, true);
