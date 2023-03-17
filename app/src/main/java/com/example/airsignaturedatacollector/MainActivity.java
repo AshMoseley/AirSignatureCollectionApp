@@ -40,7 +40,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private static final int REQUEST_CODE_WRITE_STORAGE = 123;
     private static final int SENSOR_DELAY_TIME = SensorManager.SENSOR_DELAY_NORMAL;
     private static final long VIBRATION_DURATION = 50;
-    private static final long COLLECTION_DURATION = 3000;
+    private static final long COLLECTION_DURATION = 5000;
 
     private boolean isCollectingData = false;
     private Handler handler = new Handler();
@@ -109,7 +109,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
         isCollectingData = true;
         fileCounter++; // Increment the file count
-        saveDataToFileHeader(); // Save a new file header
+       // saveDataToFileHeader(); // Save a new file header
         Toast.makeText(getBaseContext(), "Data collection started. File #" + fileCounter + " created.", Toast.LENGTH_LONG).show();
         isCollectingData = true;
         handler.postDelayed(stopDataCollectionTask, COLLECTION_DURATION);
@@ -196,23 +196,23 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
 
-    private void saveDataToFileHeader() {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
-        String currentDateandTime = sdf.format(new Date());
-        String fileName = "data_" + fileCounter + "_" + currentDateandTime + ".csv";
-
-       // File file = new File(Environment.getExternalStorageDirectory(), fileName);
-        File file = new File(getFilesDir(), fileName);
-        FileWriter writer;
-        try {
-            writer = new FileWriter(file);
-            writer.append("Time,X,Y,Z\n");
-            writer.flush();
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+//    private void saveDataToFileHeader() {
+//        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
+//        String currentDateandTime = sdf.format(new Date());
+//        String fileName = "data_" + fileCounter + "_" + currentDateandTime + ".csv";
+//
+//       // File file = new File(Environment.getExternalStorageDirectory(), fileName);
+//        File file = new File(getFilesDir(), fileName);
+//        FileWriter writer;
+//        try {
+//            writer = new FileWriter(file);
+//            writer.append("Time,X,Y,Z\n");
+//            writer.flush();
+//            writer.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
     private void saveDataToFile(SensorEvent event) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault());
@@ -223,7 +223,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         File file = new File(getFilesDir(), fileName);
         FileWriter writer;
         try {
-            writer = new FileWriter(file, true);
+            if (!file.exists()) {
+                writer = new FileWriter(file);
+                writer.append("x,y,z\n");
+            } else {
+                writer = new FileWriter(file, true);
+            }
             writer.append(event.values[0] + "," + event.values[1] + "," + event.values[2] + "\n");
             writer.flush();
             writer.close();
