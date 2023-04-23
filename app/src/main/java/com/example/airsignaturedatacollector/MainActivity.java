@@ -1,8 +1,6 @@
 package com.example.airsignaturedatacollector;
 
 import androidx.appcompat.app.AppCompatActivity;
-
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -11,40 +9,19 @@ import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Vibrator;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.opencsv.CSVWriter;
-
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
 import java.util.Locale;
-
 import android.Manifest;
-import android.content.pm.PackageManager;
-import android.os.Build;
 
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
-
     private static final int REQUEST_CODE_WRITE_STORAGE = 123;
-    private static final int SENSOR_DELAY_TIME = SensorManager.SENSOR_DELAY_NORMAL;
-    private static final long VIBRATION_DURATION = 50;
-    private static final long COLLECTION_DURATION = 5000;
-
-    private boolean isCollectingData = false;
-    private Handler handler = new Handler();
-
     private SensorManager sensorManager;
     private Sensor accelerometer;
 
@@ -56,8 +33,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float deltaYMax = 0;
     private float deltaZMax = 0;
 
-    private float vibrateThreshold = 0;
-
     private TextView currentX;
     private TextView currentY;
     private TextView currentZ;
@@ -65,68 +40,46 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private TextView maxY;
     private TextView maxZ;
 
-    private Vibrator vibrator;
+    private Button startButton;
 
-    private Button startButton; // New variable to hold the start button
-    private int fileCounter = 0; // New variable to keep track of the file count
+    private boolean isRecording = false;
 
+    private File file;
+    private FileWriter writer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        initializeViews();
         checkWriteStoragePermission();
-
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        initializeViews();
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
-        if (accelerometer != null) {
-            vibrateThreshold = accelerometer.getMaximumRange() / 2;
-        } else {
-            Toast.makeText(getBaseContext(), "Accelerometer sensor not found!", Toast.LENGTH_LONG).show();
-        }
+        startButton = findViewById(R.id.start_button);
 
-        vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-
-        startButton = findViewById(R.id.start_button); // Find the start button by its ID
-        startButton.setOnClickListener(new View.OnClickListener() { // Add a click listener to the button
+        startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startDataCollection(); // Call the method to start data collection
+                if (!isRecording) {
+                    startRecording();
+                } else {
+                    stopRecording();
+                }
             }
         });
     }
-    private Runnable stopDataCollectionTask = new Runnable() {
-        @Override
-        public void run() {
-            stopDataCollection();
-        }
-    };
-    private void startDataCollection() {
-        if (isCollectingData) {
-            return;
-        }
-        isCollectingData = true;
-        fileCounter++; // Increment the file count
-       // saveDataToFileHeader(); // Save a new file header
-        Toast.makeText(getBaseContext(), "Data collection started. File #" + fileCounter + " created.", Toast.LENGTH_LONG).show();
-        isCollectingData = true;
-        handler.postDelayed(stopDataCollectionTask, COLLECTION_DURATION);
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
-    private void stopDataCollection() {
-        isCollectingData = false;
-        Toast.makeText(getBaseContext(), "Data collection stopped.", Toast.LENGTH_LONG).show();
-    }
-
-    private void initializeViews() {
-        currentX = findViewById(R.id.currentX);
-        currentY = findViewById(R.id.currentY);
-        currentZ = findViewById(R.id.currentZ);
-        maxX = findViewById(R.id.maxX);
-        maxY = findViewById(R.id.maxY);
-        maxZ = findViewById(R.id.maxZ);
+    @Override
+    protected void onPause() {
+        super.onPause();
+        sensorManager.unregisterListener(this);
     }
 
     private void checkWriteStoragePermission() {
@@ -143,6 +96,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
+    private void initializeViews() {
+        currentX = findViewById(R.id.currentX);
+        currentY = findViewById(R.id.currentY);
+        currentZ = findViewById(R.id.currentZ);
+        maxX = findViewById(R.id.maxX);
+        maxY = findViewById(R.id.maxY);
+        maxZ = findViewById(R.id.maxZ);
+    }
+
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -155,14 +118,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         }
     }
-
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (isCollectingData) {
+        if (isRecording) {
             currentX.setText(String.format("%.2f", event.values[0]));
             currentY.setText(String.format("%.2f", event.values[1]));
             currentZ.setText(String.format("%.2f", event.values[2]));
-
             float deltaX = Math.abs(lastX - event.values[0]);
             float deltaY = Math.abs(lastY - event.values[1]);
             float deltaZ = Math.abs(lastZ - event.values[2]);
@@ -180,74 +141,59 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 maxZ.setText(String.format("%.2f", deltaZMax));
             }
 
-            lastX = event.values[0];
-            lastY = event.values[1];
-            lastZ = event.values[2];
-
-            if (deltaX > vibrateThreshold || deltaY > vibrateThreshold || deltaZ > vibrateThreshold) {
-                vibrator.vibrate(VIBRATION_DURATION);
+            try {
+                writer.append(event.values[0] + "," + event.values[1] + "," + event.values[2] + ",");
+               // writer.append(String.format(Locale.US, ",%.2f,%.2f,%.2f", event.values[0], event.values[1], event.values[2]));
+                writer.flush();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-
-            saveDataToFile(event); // Save the data to the file
         }
     }
 
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    private void startRecording() {
+        isRecording = true;
+        startButton.setText("Stop");
+        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+        try {
+            String filename = "data.csv";
+            file = new File(dir, filename);
+            writer = new FileWriter(file,true);
+            StringBuilder sb = new StringBuilder();
+            if (file.length() == 0) {
+            for (int i = 1; i <= 25; i++) {
+                sb.append(String.format("x%d,y%d,z%d", i, i, i));
+                if (i != 25) {
+                    sb.append(",");
+                  }
+                }
+            }
+            sb.append("\n");
+            writer.append(sb.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        new android.os.Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                stopRecording();
+            }
+        }, 5000);
     }
 
-//    private void saveDataToFileHeader() {
-//        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
-//        String currentDateandTime = sdf.format(new Date());
-//        String fileName = "data_" + fileCounter + "_" + currentDateandTime + ".csv";
-//
-//       // File file = new File(Environment.getExternalStorageDirectory(), fileName);
-//        File file = new File(getFilesDir(), fileName);
-//        FileWriter writer;
-//        try {
-//            writer = new FileWriter(file);
-//            writer.append("Time,X,Y,Z\n");
-//            writer.flush();
-//            writer.close();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//    }
-
-    private void saveDataToFile(SensorEvent event) {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault());
-        String currentDateandTime = sdf.format(new Date());
-        String fileName = "data_" + fileCounter + "_" + currentDateandTime.substring(0, 10) + ".csv";
-
-       // File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), fileName);
-        File file = new File(getFilesDir(), fileName);
-        FileWriter writer;
+    private void stopRecording() {
+        isRecording = false;
+        startButton.setText("Start");
         try {
-            if (!file.exists()) {
-                writer = new FileWriter(file);
-                writer.append("x,y,z\n");
-            } else {
-                writer = new FileWriter(file, true);
-            }
-            writer.append(event.values[0] + "," + event.values[1] + "," + event.values[2] + "\n");
             writer.flush();
             writer.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        Toast.makeText(this, "Data saved to " + Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), Toast.LENGTH_SHORT).show();
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        sensorManager.registerListener(this, accelerometer, SENSOR_DELAY_TIME);
-    }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        sensorManager.unregisterListener(this);
-    }
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 }
-
-
