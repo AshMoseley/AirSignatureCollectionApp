@@ -38,14 +38,14 @@ The recorded CSV file is saved in the Documents directory of the external storag
 
 ## Code Explanation
 ### 'MainActivity.java'
-- 'onCreate': Initializes the app, checks for storage permissions, and sets up UI components and sensor manager.
-- 'onResume' / 'onPause': Registers and unregisters the accelerometer sensor listener.
-- 'checkWriteStoragePermission': Requests storage permission if not already granted.
-- 'initializeViews': Links the UI components to their respective views.
-- 'onRequestPermissionsResult': Handles the result of the storage permission request.
-- 'onSensorChanged': Captures the accelerometer data and updates the UI and CSV file.
-- 'startRecording': Starts the data recording process and initializes the CSV file.
-- 'stopRecording': Stops the data recording process and closes the CSV file writer.
+- `onCreate`: Initializes the app, checks for storage permissions, and sets up UI components and sensor manager.
+- `onResume` / 'onPause': Registers and unregisters the accelerometer sensor listener.
+- `checkWriteStoragePermission`: Requests storage permission if not already granted.
+- `initializeViews`: Links the UI components to their respective views.
+- `onRequestPermissionsResult`: Handles the result of the storage permission request.
+- `onSensorChanged`: Captures the accelerometer data and updates the UI and CSV file.
+- `startRecording`: Starts the data recording process and initializes the CSV file.
+- `stopRecording`: Stops the data recording process and closes the CSV file writer.
 
 ## Permissions
 The app requires the following permission in AndroidManifest.xml:
@@ -54,7 +54,7 @@ The app requires the following permission in AndroidManifest.xml:
   ```
 
 ## Notes
-- The app is designed to record accelerometer data for a fixed interval of 5 seconds. You can adjust this duration by modifying the delay in the 'startRecording' method.
+- The app is designed to record accelerometer data for a fixed interval of 5 seconds. You can adjust this duration by modifying the delay in the `startRecording` method.
 - Ensure that the device has enough storage space and the Documents directory is accessible.
   
 ## Troubleshooting
